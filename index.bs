@@ -12,35 +12,364 @@ Abstract: WebCodecs is a flexible web API for encoding and decoding audio and vi
 !Participate: <a href="https://github.com/wicg/web-codecs">Git Repository.</a>
 !Participate: <a href="https://github.com/wicg/web-codecs/issues/new">File an issue.</a>
 !Version History: <a href="https://github.com/wicg/web-codecs/commits">https://github.com/wicg/web-codecs/commits</a>
+Inline GitHub Issues: yes
+Default Biblio Status: current
 </pre>
 
-<section class='non-normative'>
-  <h2 id='introduction'>Introduction</h2>
-  <em>This section is non-normative</em>
-  <p>
-    The introduction has not yet been written.
-  </p>
-  <p class='note'>
-    NOTE: The interfaces that follow are a work in progress.
-  </p>
-</section>
+<pre class="anchors">
+urlPrefix: https://www.w3.org/TR/mediacapture-streams/#; type: interface; text: MediaStreamTrack; url: mediastreamtrack
+url: https://www.w3.org/TR/mediacapture-streams/#dom-mediadevices-getusermedia; type: method; for: MediaDevices; text: getUserMedia()
+urlPrefix: https://www.w3.org/TR/webaudio/#; type: interface; text: WebAudio; url: webaudio
+urlPrefix: https://www.w3.org/TR/mediastream-recording/#; type: interface; text: MediaRecorder; url: MediaRecorder
+urlPrefix: https://www.w3.org/TR/media-source/; type: interface; text: MSE; url: mse
+urlPrefix: https://www.w3.org/TR/webrtc/#; type: interface; text: WebRTC; url: webrtc
+urlPrefix: https://wicg.github.io/web-transport/#; type: interface; text: WebTransport; url: webtransport
+urlPrefix: https://www.w3.org/TR/wasm-core-1/#; type: interface; text: WebAssembly; url: webassembly
+urlPrefix: https://www.khronos.org/registry/webgl/specs/latest/1.0/; type: interface; text: WebGL; url: webgl
+urlPrefix: https://html.spec.whatwg.org/multipage/canvas.html; type: interface; text: Canvas; url: canvas
+urlPrefix: https://www.iso.org/standard/68960.html; type: interface; text: MP4; url: mp4
+urlPrefix: https://www.webmproject.org/docs/container/; type: interface; text: Webm; url: webm
+</pre>
 
-<section>
-  <h2 id='video-decoder-interface'>VideoDecoder Interface</h2>
+<pre class="link-defaults">
+spec: html
+    type: dfn
+        text: allowed to show a popup
+        text: in parallel
+        text: incumbent settings object
+spec:webidl; type:interface; text:Promise
+</pre>
+
+<pre class=biblio>
+{
+   "WEBCODECS-USECASES": {
+         "authors": [
+             "Chris Cunningham"
+         ],
+         "id": "WEBCODECS-USECASES",
+         "href": "https://github.com/WICG/web-codecs/blob/master/explainer.md#key-use-cases",
+         "title": "WebCodecs Use Cases",
+         "date": "2020",
+         "status": "Note"
+     },
+     "WEBCODECS-EXAMPLES": {
+         "authors": [
+             "Chris Cunningham"
+         ],
+         "id": "WEBCODECS-EXAMPLES",
+         "href": "https://github.com/WICG/web-codecs/blob/master/explainer.md#examples",
+         "title": "WebCodecs Examples",
+         "date": "2020",
+         "status": "Note"
+     },
+     "CLOUD-GAMING-WEBCODECS": {
+         "authors": [
+             "Peter Thatcher"
+         ],
+         "id": "CLOUD-GAMING-WEBCODECS",
+         "href": "https://www.w3.org/2018/12/games-workshop/slides/21-webtransport-webcodecs.pdf",
+         "title": "Cloud gaming with WebCodecs",
+         "date": "2018",
+         "status": "Note"
+     }
+}
+</pre>
+
+<style>
+table {
+  border-collapse: collapse;
+  border-left-style: hidden;
+  border-right-style: hidden;
+  text-align: left;
+}
+table caption {
+  font-weight: bold;
+  padding: 3px;
+  text-align: left;
+}
+table td, table th {
+  border: 1px solid black;
+  padding: 3px;
+}
+</style>
+
+# Introduction # {#introduction}
+
+The API defined in this document provides efficient access to built-in (software
+and hardware) media encoders and decoders for encoding and decoding media. There
+are many Web APIs that use media codecs internally to support like
+{{HTMLMediaElement}}, {{WebAudio}}, {{MediaRecorder}} and {{WebRTC}}. Inspite of
+the wide spread usage, there has been a lack of support for configuring the
+media codecs. As a consequence, many web applications have resorted to
+implementing media codecs in JavaScript or {{WebAssembly}}. This results in
+reduced power efficiency, reduced performance and increased bandwidth to
+download a media codec already present in the browser. A comprehensive list of
+applicable use cases, and code examples can be found in [[WEBCODECS-USECASES]]
+and [[WEBCODECS-EXAMPLES]] explainer documents.
+
+
+# Scope # {#scope}
+The current scope of this specification are the platform and software codecs
+which are commonly present in modern day browsers. Media apps might need to work
+with a particular type of file or media containers like {{MP4}} or {{Webm}} by
+using a muxer or demuxer. Usages like that are currently out of scope for
+WebCodecs. Writing codecs in JavaScript or {{WebAssembly}} is definitely out of
+scope for WebCodecs. In fact, with support for WebCodecs, the need to write
+codecs in JavaScript or {{WebAssembly}} should ideally be restricted only to
+support legacy codecs or emulate support for new and experimental codecs. Images
+are mostly decoded using the same codecs as video even though there might be
+tight coupling between the container and the encoded data. There is a
+possibility that we might consider ImageDecoder as part of WebCodecs in future.
+Image encoding is presently out of scope for this document.
+
+
+# Background # {#background}
+
+<em>This section is non-normative</em>.
+
+
+# Use Cases # {#use-cases}
+
+<em>This section is non-normative</em>.
+
+This section provides a collection of use cases and usage scenarions for web
+pages and applications using {{WebCodecs}}. Some of them are
+<strong>not</strong> supported in the current scope.
+
+  Extremely low latency live streaming (< 3s delay)
+  --------------------
+  Cloud gaming
+  --------------------
+  {{WebRTC}} and {{MSE}} are not great for cloud gaming. WebSocket is also not great for gaming.
+  {{WebRTC}} is hard to use in a server-client architecture and does not provide a lot of knobs to control buffering, decoding and rendering which are all controlled by browser. Cloud gaming need low latency provided by {{WebTransport}} and more web developer control provided by Web Codecs.
+  Details are described at [[CLOUD-GAMING-WEBCODECS]]
+
+
+  Live stream uploading
+  --------------------
+  Non-realtime encoding/decoding/transcoding, such as for local file editing
+  --------------------
+  Advanced Real-time Communications
+  --------------------
+  e2e encryption
+  --------------------
+  control over buffer behavior
+  --------------------
+  spatial and temporal scalability
+  --------------------
+  Decoded and encoding images
+  --------------------
+  Re-encoding multiple input media streams in order to merge many encoded media
+  streams into one encoded media stream.
+  --------------------
+
+
+# Security and Privacy Considerations # {#securityandprivacy}
+
+
+# Model # {#model}
+
+An <dfn>EncodedAudioChunks</dfn> and <dfn>EncodedVideoChunks</dfn> contain
+codec-specific encoded media bytes. An <dfn>EncodedVideoChunk</dfn> contains a
+single encoded video frame along with metadata related to the frame, for example
+timestamp.
+
+<dfn>AudioPacket</dfn> contains decoded audio data. It will provide an
+{{AudioBuffer}} for rendering via {{AudioWorklet}}.
+
+A <dfn>VideoFrame</dfn> contains decoded video data. It will provide an
+{{ImageBitmap}} for rendering to {{Canvas}}. It should be possible to manipulate
+the {{ImageBitmap}} in {{WebGL}} and render the {{VideoFrame}} into a {{WebGL}}
+texture with texImage2D. It should also provide access to YUV data.
+
+An <dfn>AudioEncoder</dfn> encodes <a>AudioPackets</a> to produce
+<a>EncodedAudioChunks</a>.
+
+A <dfn>VideoEncoder</dfn> encodes <a>VideoFrames</a> to produce
+<a>EncodedVideoChunks</a>.
+
+An <dfn>AudioDecoder</dfn> decodes <a>EncodedAudioChunks</a> to produce
+<a>AudioPackets</a>.
+
+A <dfn>VideoDecoder</dfn> decodes <a>EncodedVideoChunks</a> to produce
+<a>VideoFrames</a>.
+
+WebCodecs API also has mechanisms to import content referenced through a valid
+{{MediaStreamTrack}}, for example from {{getUserMedia()}}.
+
+The term <dfn>platform decoder</dfn> refers to the platform interfaces with
+which the user agent interacts to obtain a decoded [=VideoFrame=]. The
+[=platform decoder=] can be defined by the underlying platform (e.g native media
+framework).
+
+The term <dfn>platform encoder</dfn> refers to the platform interfaces with
+which the user agent interacts to encode a [=VideoFrame=]. The [=platform
+encoder=] can be defined by the underlying platform (e.g native media
+framework).
+
+# Web Codecs API # {#webcodecsapi}
+
+VideoFrame interface {#video-frame-interface}
+--------------------
   <pre class='idl'>
-    [Exposed=(Window)]
-    interface VideoDecoder {
-        Promise&lt;void&gt; Initialize(VideoDecoderInitParameters params);
-        Promise&lt;void&gt; Flush();
-        void Close();
-
-        readonly attribute WritableStream writable;  // of EncodedVideoFrame
-        readonly attribute ReadableStream readable;  // of VideoFrame
+    dictionary VideoFrameInit {
+      unsigned long long timestamp;  // microseconds
+      unsigned long long? duration;  // microseconds
     };
   </pre>
   <pre class='idl'>
     [Exposed=(Window)]
-    dictionary VideoDecoderInitParameters {
+    interface VideoFrame {
+        constructor(VideoFrameInit init, ImageBitmap source);
+        void release();
+        readonly attribute unsigned long long timestamp;  // microseconds
+        readonly attribute unsigned long long? duration;  // microseconds
+        readonly attribute unsigned long codedWidth;
+        readonly attribute unsigned long codedHeight;
+
+        readonly attribute unsigned long visibleWidth;
+        readonly attribute unsigned long visibleHeight;
+    };
+  </pre>
+
+The {{VideoFrame/timestamp!!attribute}} attribute in {{VideoFrame}} object that
+represents the sampling instant of the first data of the {{VideoFrame}} in
+microseconds. Initial value should be specified by
+{{VideoFrameInit/timestamp!!attribute}} during {{VideoFrame}} construction.
+
+The {{VideoFrame/duration!!attribute}} is an optional attribute in
+{{VideoFrame}} object that represents the time interval for which the video
+composition should render the composed {{VideoFrame}} in microseconds.
+
+The {{VideoFrame/codedWidth!!attribute}} attribute in {{VideoFrame}} object that
+denotes the width of a {{VideoFrame}} immediately after a
+{{VideoDecoder/decode()}} operation.
+
+The {{VideoFrame/codedHeight!!attribute}} attribute in {{VideoFrame}} object
+that denotes the height of a {{VideoFrame}} immediately after a
+{{VideoDecoder/decode()}} operation.
+
+The {{VideoFrame/visibleWidth!!attribute}} attribute in {{VideoFrame}} object
+that denotes the portion of {{VideoFrame/codedWidth!!attribute}} which contains
+image data which should be visible to the user.
+
+The {{VideoFrame/visibleHeight!!attribute}} attribute in {{VideoFrame}} object
+that denotes the portion of {{VideoFrame/codedHeight!!attribute}} which contains
+image data. data which should be visible to the user.
+
+Note: An image’s <strong>clean aperture</strong> is a region of video free from
+transition artifacts caused by the encoding of the signal. This is the region of
+video that should be displayed. {{VideoFrame/visibleWidth!!attribute}} and
+{{VideoFrame/visibleHeight!!attribute}} denote the frame's clean aperture
+region. The clean aperture is usually in the center of <strong>production
+aperture</strong> which might contain some details along the edges of the image.
+The {{VideoFrame/codedWidth!!attribute}} and
+{{VideoFrame/codedHeight!!attribute}} constitute the production aperture of the
+image.
+
+Instances of {{VideoFrame}} are created with an internal slot <dfn attribute
+for=VideoFrame>\[[frame]]</dfn>.
+
+### Create a VideoFrame ### {#video-frame-constructor}
+<div algorithm="to create a video frame">
+    : input
+    :: |init|, a [=dictionary=] object of type {{VideoFrameInit}}
+    :: |source|, a {{ImageBitmap}} object.
+    : output
+    :: |frame_instance|, a {{VideoFrame}} object.
+
+    1.  If |source| is null, [=Throw=] "{{NotFoundError!!exception}}" {{DOMException}} and return.
+    1.  Calculate the |coded size| from the |source|.
+    1.  Calculate |timestamp| from the input argument {{VideoFrameInit}} to create a {{VideoFrame}}.
+    1.  If |timestamp| is not null, set |frame_instance|.{{[[frame]]}} to |init|.{{timestamp!!dict-member}}.
+
+
+### VideoFrame.release() ### {#video-frame-release}
+<div algorithm="to release a video frame">
+The {{VideoFrame/release()}} method must run these steps:
+
+    1.  Reset the underlying |frame_instance|.{{[[frame]]}}.
+
+
+EncodedVideoChunk interface {#encoded-video-interface}
+--------------------
+  <pre class='idl'>
+    enum EncodedVideoChunkType {
+      "key",
+      "delta",
+    };
+    interface EncodedVideoChunk {
+      constructor(EncodedVideoChunkType type, unsigned long long timestamp, BufferSource data);
+      constructor(EncodedVideoChunkType type, unsigned long long timestamp, unsigned long long duration, BufferSource data);
+      readonly attribute EncodedVideoChunkType type;
+      // TODO: Add frame dependency information
+      readonly attribute unsigned long long timestamp;  // microseconds
+      readonly attribute unsigned long long? duration;  // microseconds
+      readonly attribute ArrayBuffer data;
+    };
+  </pre>
+
+Instances of {{EncodedVideoChunk}} are created with the internal slots described
+in the following table:
+<table id="video-decoder-slots" class="def">
+    <thead>
+        <tr><th>Internal Slot</th><th>Description (non-normative)</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><dfn attribute for=EncodedVideoChunk>\[[metadata]]</dfn></td>
+            <td>A struct which should contain information like if the frame is a key_frame, the timestamp and duration for which the frame should be rendered.
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=EncodedVideoChunk>\[[buffer]]</dfn></td>
+            <td>An ArrayBuffer to hold the {{VideoFrame}} data.
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+
+AudioPacket interface {#audio-packet-interface}
+--------------------
+
+EncodedAudioChunk interface {#encoded-audio-interface}
+--------------------
+
+
+
+WebCodecs callbacks {#webcodecs-callbacks}
+--------------------
+  <pre class='idl'>
+    callback WebCodecsErrorCallback  = void (DOMException error);
+    callback VideoDecoderOutputCallback = void (VideoFrame output);
+    callback VideoEncoderOutputCallback = void (EncodedVideoChunk chunk);
+  </pre>
+
+VideoDecoder interface {#video-decoder-interface}
+--------------------
+  <pre class='idl'>
+    [Exposed=(Window)]
+    interface VideoDecoder {
+        constructor(VideoDecoderInit init);
+
+        Promise&lt;void&gt; configure(EncodedVideoConfig config);
+        Promise&lt;void&gt; decode(EncodedVideoChunk chunk);
+        Promise&lt;void&gt; flush();
+        Promise&lt;void&gt; reset();
+
+        readonly attribute long decodeQueueSize;
+        readonly attribute long decodeProcessingCount;
+    };
+  </pre>
+  <pre class='idl'>
+    dictionary VideoDecoderInit {
+      VideoDecoderOutputCallback output;
+      WebCodecsErrorCallback error;
+    };
+  </pre>
+  <pre class='idl'>
+    dictionary EncodedVideoConfig {
       required DOMString codec;
       required DOMString profile;
 
@@ -49,20 +378,189 @@ Abstract: WebCodecs is a flexible web API for encoding and decoding audio and vi
       required unsigned long height;
     };
   </pre>
-</section>
 
-<section>
-  <h2 id='video-encoder-interface'>VideoEncoder Interface</h2>
-  <pre class='idl'>
-    [Exposed=(Window)]
-    interface VideoEncoder {
-      Promise&lt;void&gt; Initialize(VideoEncoderInitParameters params);
-      void Close();
+A {{VideoDecoder}} object processes a queue of configure, decode, and flush
+requests. Requests are taken from the queue sequentially but may be processed
+concurrently. A {{VideoDecoder}} object has an associated [=platform decoder=].
 
-      readonly attribute WritableStream writable;  // of VideoFrame
-      readonly attribute ReadableStream readable;  // of EncodedVideoFrame
-    };
-  </pre>
+### VideoDecoder.decodeQueueSize() ### {#video-decoder-decodeQueueSize}
+
+The {{VideoDecoder/decodeQueueSize!!attribute}} attribute in {{VideoDecoder}}
+object denotes decode requests, excluding those that are already being
+processed. Applications can minimize underflow by enqueueing |decodeQueueSize|
+decode requests.
+
+### VideoDecoder.decodeProcessingCount() ### {#video-decoder-decodeProcessingCount}
+
+The {{VideoDecoder/decodeProcessingCount!!attribute}} attribute in
+{{VideoDecoder}} object denotes the number of decode requests currently being
+processed. Applications can minimize resource consumption and decode latency by
+enqueueing decode requests only when |decodeQueueSize| and
+|decodeProcessingCount| are small.
+
+
+### VideoDecoder Callbacks ### {#video-decoder-callbacks}
+
+The {{VideoDecoderOutputCallback}} denoted by |output|, is for emitting
+{{VideoFrames}}. The {{WebCodecsErrorCallback}} denoted by |error|, is for
+emitting decode errors.
+
+### VideoDecoder internal slots ### {#video-decoder-internal-slots}
+
+Instances of {{VideoDecoder}} are created with the internal slots described in
+the following table:
+
+<table id="video-decoder-slots" class="def">
+    <thead>
+        <tr><th>Internal Slot</th><th>Description (non-normative)</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><dfn attribute for=VideoDecoder>\[[request]]</dfn></td>
+            <td>A double-ended queue (FIFO) for storing the requests which can be one of the following type 
+                "configure",
+                "decode",
+                "flush", or
+                "reset".
+                The initial task type should be "configure" and the queue should initially be empty.
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=VideoDecoder>\[[requested_decodes]]</dfn></td>
+            <td>An integer representing the number of decode requests currently being processed for the associated  [=platform decoder=]. It is initially set to 0.
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=VideoDecoder>\[[requested_resets]]</dfn></td>
+            <td>An integer representing the number of reset requests currently being processed for the associated [=platform decoder=]. It is initially set to 0.
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=VideoDecoder>\[[pending_encodes]]</dfn></td>
+            <td>A hashmap representing the number of pending decode requests currently being processed for the associated [=platform decoder=]. It is initially empty.
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=VideoDecoder>\[[platform_decoder]]</dfn></td>
+            <td>A reference to the platform interfaces with which the user agent interacts to obtain a decoded [=VideoFrame=]. [=Platform decoder=] can be defined by the underlying platform (e.g native media framework). It is initially unset.
+            </td>
+        </tr>
+         <tr>
+            <td><dfn attribute for=VideoDecoder>\[[output_callback]]</dfn></td>
+            <td>A callback which is called when {{VideoDecoder}} finishes decoding and now has a decoded [=VideoFrame=] as an output.
+            </td>
+        </tr>
+         <tr>
+            <td><dfn attribute for=VideoDecoder>\[[error_callback]]</dfn></td>
+            <td>A callback which is called when {{VideoDecoder}} encounters an error while decoding.
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+### Create a VideoDecoder() ### {#video-decoder-constructor}
+<div algorithm="to create a decoder">
+
+    : input
+    :: |init|, a {{VideoDecoderInit}} object.
+    : output
+    :: |decoder|, a {{VideoDecoder}} object.
+
+    1.  Let |video_decoder_init| be the first argument to constructor.
+    1.  Set |decoder|.{{[[requested_decodes]]}} to 0.
+    1.  Set |decoder|.{{[[requested_resets]]}} to 0.
+    1.  Set |decoder|.{{[[pending_encodes]]}} to empty.
+    1.  Set |decoder|.{{[[request]]}} to empty.
+    1.  Set |decoder|.{{[[platform_decoder]]}} to null.
+    1.  Set |decoder|.{{[[output_callback]]}} to |init|.{{VideoDecoderInit/output}}.
+    1.  Set |decoder|.{{[[error_callback]]}} to |init|.{{VideoDecoderInit/error}}.
+
+
+</div>
+
+### VideoDecoder.configure() ### {#video-decoder-configure}
+<div algorithm="to configure a decoder">
+
+  The {{VideoDecoder/configure()}} method must run these steps:
+
+    1.  Let |p| be a new {{Promise}} object.
+    1.  Let |config|, an instance of {{EncodedVideoConfig}} be the first argument.
+    1.  Let |codec| be the |config|'s dictionary member of the same name.
+    1.  Perform |codec| validation:
+        1.  If |codec| is null, then reject |p| with an "{{NotAllowedError!!exception}}" {{DOMException}}. and return |p|.
+        1.  If |codec| is not among the set of allowed codecs, then reject |p| with an "{{NotSupportedError!!exception}}" {{DOMException}} and return |p|.
+    1.  If there doesn't exists a [=platform decoder=] which can fullfill the requirements set in |config|, then reject |p| with an "{{NotSupportedError}}" {{DOMException}} and return |p|.
+    1.  Let |chunks| be the union of the sets of items in |decoder|.{{[[pending_encodes]]}} and |decoder|.{{[[request]]}}.
+    1.  Wait until any of the items in |chunks| is not in |decoder|.{{[[pending_encodes]]}} or |decoder|.{{[[request]]}}.
+    1.  Set |decoder|.{{[[platform_decoder]]}} to point to the matching [=platform decoder=].
+    1.  Set |decoder|.{{[[platform_decoder]]}} to newly initialized state.
+    1.  Resolve and return |p|.
+</div>
+
+Note: After the {{VideoDecoder/configure()}} call, the decoder is in the newly
+initialized state so the next chunk to be decoded must be a keyframe.
+
+### VideoDecoder.decode() ### {#video-decoder-decode}
+<div algorithm="to start decoding">
+
+
+  The {{VideoDecoder/decode()}} method must run these steps:
+
+    1.  Let |p| be a new {{Promise}} object.
+    1.  Let |chunk|, an instance of {{EncodedVideoChunk}} be the first argument.
+    1.  If |decoder|.{{[[platform_decoder]]}} is null, then reject |p| with an "{{InvalidStateError!!exception}}" {{DOMException}} and return |p|.
+    1.  If |chunk|.{{type}} is not {{EncodedVideoChunkType/key}} and |decoder|.{{[[platform_decoder]]}} is newly initialized, then reject p with an "{{InvalidStateError!!exception}}" {{DOMException}} and return |p|.
+    1.  If |decoder|.{{[[platform_decoder]]}} can accept more work:
+        1.  Add |chunk| into |decoder|.{{[[pending_encodes]]}}.
+        1.  Let |video_frame| be a new instance of {{VideoFrame}} and associate it with |chunk|.
+        1.  |decoder|.{{[[platform_decoder]]}} should start decoding chunk into |video_frame|.
+        1.  Increment |decoder|.{{decodeProcessingCount!!attribute}} by 1.
+    1.  else:
+        1.  Add chunk at the end of |decoder|.{{[[request]]}} queue.
+        1.  Increment |decoder|.{{decodeQueueSize!!attribute}} by 1.
+    1.  Resolve and return |p|.
+</div>
+
+Note: get backpressure idea from
+|decoder|.{{decodeQueueSize!!attribute}}) to know if
+|decoder|.{{[[platform_decoder]]}} can accept new work right away
+with |decoder|.{{decodeProcessingCount!!attribute}}.
+
+
+### VideoDecoder.flush() ### {#video-decoder-flush}
+<div algorithm="to flush a decoder">
+
+  The {{VideoDecoder/flush()}} method must run these steps:
+
+    1.  Let |p| be a new {{Promise}} object.
+    1.  Let |chunks| be the union of the sets of items in |decoder|.{{[[pending_encodes]]}} and |decoder|.{{[[request]]}}.
+    1.  Wait until any of the items in |chunks| is not in |decoder|.{{[[pending_encodes]]}} or |decoder|.{{[[request]]}}.
+    1.  Resolve and return |p|.
+</div>
+
+### VideoDecoder.reset() ### {#video-decoder-reset}
+<div algorithm="to reset a decoder">
+
+  The {{VideoDecoder/reset()}} method must run these steps:
+
+    1.  Let |p| be a new {{Promise}} object.
+    1.  Abort all work performed by |decoder|.{{[[platform_decoder]]}}. {{VideoDecoderOutputCallback}} will not be called for them.
+    1.  Remove all items from |decoder|.{{[[pending_encodes]]}}.
+    1.  Remove all items from |decoder|.{{[[request]]}}  
+    1.  Set |decoder|.{{[[requested_decodes]]}} to 0 and |decoder|.{{[[pending_encodes]]}} to empty.
+    1.  Set |decoder|.{{decodeProcessingCount!!attribute}} to 0.
+    1.  Set |decoder|.{{decodeQueueSize!!attribute}} to 0.
+    1.  Set the |decoder| in to newly initialized state.
+    1.  Resolve and return |p|.
+</div>
+
+Note: After the {{VideoDecoder/reset()}} call, the decoder is in the newly
+initialized state so the next chunk to be decoded must be a keyframe.
+
+
+VideoEncoder interface {#video-encoder-interface}
+--------------------
+
   <pre class='idl'>
     enum VideoEncoderHardwareMode {
       "hardware",
@@ -70,19 +568,341 @@ Abstract: WebCodecs is a flexible web API for encoding and decoding audio and vi
     };
   </pre>
   <pre class='idl'>
-    [Exposed=(Window)]
-    dictionary VideoEncoderInitParameters {
-      required VideoEncoderHardwareMode hardware_mode;
-      required DOMString codec;
-      required DOMString profile;
-
-      required unsigned long visible_width;
-      required unsigned long visible_height;
-
-      required unsigned long bitsPerSecond;
-      required double framesPerSecond;
-
-      required double maxFramesBetweenKeyFrames;
+    dictionary VideoEncoderTuneOptions {
+      unsigned long long bitrate;
+      double framerate;
+      required unsigned long width;
+      required unsigned long height;
     };
   </pre>
-</section>
+  <pre class='idl'>
+    dictionary VideoEncoderInit {
+      required DOMString codec;
+      DOMString profile;
+      required VideoEncoderTuneOptions tuneOptions;
+      required VideoEncoderOutputCallback output;
+      WebCodecsErrorCallback error;
+    };
+  </pre>
+
+  <pre class='idl'>
+    [Exposed=(Window)]
+    interface VideoEncoder {
+      constructor(VideoEncoderInit init);
+      Promise&lt;void&gt; configure(VideoEncoderInit init);
+      Promise&lt;void&gt; encode(VideoFrame frame, optional VideoEncoderEncodeOptions options);
+      Promise&lt;void&gt; tune(VideoEncoderTuneOptions options);
+      Promise&lt;void&gt; flush();
+      Promise&lt;void&gt; close();
+    };
+  </pre>
+
+
+A {{VideoEncoder}} object processes a queue of configure, encode, tuning to new
+parameters and flush requests. Requests are taken from the queue sequentially
+but may be processed concurrently. A {{VideoEncoder}} object has an associated
+[=platform video encoder=].
+
+### VideoEncoder internal slots ### {#video-encoder-internal-slots}
+
+Instances of {{VideoEncoder}} are created with the internal slots described in
+the following table:
+
+<table id="video-encoder-slots" class="def">
+    <thead>
+        <tr><th>Internal Slot</th><th>Description (non-normative)</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><dfn attribute for=VideoEncoder>\[[request]]</dfn></td>
+            <td>A double-ended queue for storing the requests which can be one of the following type 
+                "configure",
+                "encode",
+                "tune",
+                "flush", or
+                "close".
+                It is initially "configure".
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=VideoEncoder>\[[requested_encodes]]</dfn></td>
+            <td>An integer representing the number of encode requests currently being processed for the associated  [=platform encoder=]. It is initially unset.
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=VideoEncoder>\[[requested_resets]]</dfn></td>
+            <td>An integer representing the number of reset requests currently being processed for the associated [=platform encoder=]. It is initially unset.
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=VideoEncoder>\[[pending_encodes]]</dfn></td>
+            <td>A hashmap representing the number of pending encode requests currently being processed for the associated [=platform encoder=]. It is initially unset.
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=VideoEncoder>\[[platform_encoder]]</dfn></td>
+            <td>A reference to the platform interfaces with which the user agent interacts to encode a [=VideoFrame=]. [=Platform encoder=] can be defined by the underlying platform (e.g native media framework).
+            </td>
+        </tr>
+        <tr>
+            <td><dfn attribute for=VideoEncoder>\[[tune_options]]</dfn></td>
+            <td>{{VideoEncoderTuneOptions}} which are set most recently.
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+
+### Create a VideoEncoder() ### {#video-encoder-constructor}
+<div algorithm="to create a encoder">
+
+    : input
+    :: |video_encoder_init|, a {{VideoEncoderInit}} object.
+    : output
+    :: |video_encoder_instance|, a {{VideoEncoder}} object.
+
+    1.  Let |video_encoder_init| be the first argument to constructor.
+    1.  Set |video_encoder_instance|.{{[[requested_encodes]]}} to 0.
+    1.  Set |video_encoder_instance|.{{[[requested_resets]]}} to 0.
+    1.  Set |video_encoder_instance|.{{[[pending_encodes]]}} to empty.
+    1.  Set |video_encoder_instance|.{{[[request]]}} to empty.
+    1.  Set |video_encoder_instance|.{{[[platform_encoder]]}} to null.
+    1.  Set |video_encoder_instance|.{{[[output_callback]]}} to |video_encoder_init|.{{VideoEncoderInit/output}}.
+    1.  Set |video_encoder_instance|.{{[[error_callback]]}} to |video_encoder_init|.{{VideoEncoderInit/error}}.
+
+
+</div>
+
+### VideoEncoder.configure() ### {#video-encoder-configure}
+<div algorithm="to configure an encoder">
+  The {{VideoEncoder/configure()}} method must run these steps:
+
+    1.  Let |p| be a new {{Promise}} object.
+    1.  Set |video_encoder_instance|.{{[[tune_options]]}} to |video_encoder_init|.{{VideoEncoderInit/tune_options}}.
+
+</div>
+
+### VideoEncoder.encode() ### {#video-encoder-encode}
+<div algorithm="to start encoding">
+  The {{VideoEncoder/encode()}} method must run these steps:
+
+    1.  Let |p| be a new {{Promise}} object.
+    1.  Let |frame| an instance of {{VideoFrame}} be the first argument.
+    1.  Let |options| an instance of {{VideoEncoderEncodeOptions}} be the second argument.
+    1.  If |options| is null, set options to {}.
+    1.  Let |request| be a triplet {|frame|, |options|, |video_encoder_instance|.{{[[tune_options]]}}}.
+    1.  If |video_encoder_instance|.{{[[platform_encoder]]}} is null, then reject |p| with an "{{InvalidStateError!!exception}}" {{DOMException}} and return |p|.
+    1.  If |video_encoder_instance|.{{[[platform_encoder]]}} can accept more work:
+        1.  Add |request| into |video_encoder_instance|.{{[[pending_encodes]]}}.
+        1.  Increment |video_encoder_instance|.{{encodeProcessingCount!!attribute}} by 1.
+        1.  |video_encoder_instance|.{{[[platform_encoder]]}} should start encoding |request|.|frame| using |request|.|video_encoder_instance|.{{[[tune_options]]}}} and |request|.|options|.
+    1.  else:
+        1.  Add |request| at the back of |video_encoder_instance|.{{[[request]]}} queue.
+        1.  Increment |video_encoder_instance|.{{encodeQueueSize!!attribute}} by 1.
+    1.  Resolve and return |p|.
+
+</div>
+
+### VideoEncoder.tune() ### {#video-encoder-tune}
+<div algorithm="to tune encoding parameters">
+  The {{VideoEncoder/tune()}} method must run these steps:
+
+    1.  Let |p| be a new {{Promise}} object.
+    1.  Let |tune_options| an instance of {{VideoEncoderTuneOptions}} be the first argument.
+    1.  If the parameters in |tune_options| are not valid, then reject p with an "{{NotSupportedError!!exception}}" {{DOMException}} and return |p|.
+    1.  Set |video_encoder_instance|.{{[[tune_options]]}} to |tune_options|.
+    1.  Resolve and return |p|.
+</div>
+
+### VideoEncoder.flush() ### {#video-encoder-flush}
+<div algorithm="to flush an encoder">
+  The {{VideoEncoder/flush()}} method must run these steps:
+
+    1.  Let |p| be a new {{Promise}} object.
+    1.  Let |chunks| be the union of the sets of items in |video_encoder_instance|.{{[[pending_encodes]]}} and |video_encoder_instance|.{{[[request]]}}.
+    1.  Wait until any of the items in |chunks| is not in |video_encoder_instance|.{{[[pending_encodes]]}} or |video_encoder_instance|.{{[[request]]}}.
+    1.  Resolve and return |p|.
+</div>
+
+### VideoEncoder.close() ### {#video-encoder-close}
+<div algorithm="to close an encoder">
+  The {{VideoEncoder/close()}} method must run these steps:
+
+    1.  Let |p| be a new {{Promise}} object.
+    1.  Let |chunks| be the union of the sets of items in |video_encoder_instance|.{{[[pending_encodes]]}} and |video_encoder_instance|.{{[[request]]}}.
+    1.  Wait until any of the items in |chunks| is not in |video_encoder_instance|.{{[[pending_encodes]]}} or |video_encoder_instance|.{{[[request]]}}.
+    1.  Set the |video_encoder_instance| to null.
+    1.  Resolve and return |p|.
+</div>
+
+
+
+
+AudioDecoder  interface {#audio-decoder-interface}
+--------------------
+
+AudioEncoder interface {#audio-decoder-interface}
+--------------------
+
+
+# Examples # {#examples}
+
+<div class="example">
+    This code sample illustrates of video rendering to Canvas for extremely low-latency streaming (e.g. cloud gaming)
+    <pre highlight="js">
+      // App provides stream of encoded chunks to decoder.
+      function streamEncodedChunks(decodeCallback) { ... }
+
+      // The document contains a canvas for displaying VideoFrames.
+      const canvasElement = document.getElementById("canvas");
+      const canvasContext = canvasElement.getContext('bitmaprenderer');
+
+      function paintFrameToCanvas(videoFrame) {
+        // Paint every video frame ASAP for lowest latency.
+        canvasContext.transferFromImageBitmap(videoFrame.transferToImageBitmap());
+      }
+
+      const videoDecoder = new VideoDecoder({
+        output: paintFrameToCanvas,
+        error: console.error("Decode Error")
+      });
+
+      videoDecoder.configure({codec: 'vp8'}).then(() => {
+        // The app fetches VP8 chunks, feeding each chunk to the decode
+        // callback as fast as possible. Real apps must also monitor
+        // decoder backpressure to ensure the decoder is keeping up.
+        streamEncodedChunks(videoDecoder.decode.bind(videoDecoder));
+      }).catch(() => {
+        // App provides fallback logic when config not supported.
+        ...
+      });
+    </pre>
+</div>
+
+
+
+<div class="example">
+    This code sample illustrates transcoding or offline encode/decode.
+    <pre highlight="js">
+      // App demuxes (decontainerizes) input and makes repeated calls to the provided
+      // callbacks to feed the decoders.
+      function streamEncodedChunks(decodeAudioCallback, decodeVideoCallback) { ... }
+
+      // App provides a way to demux  and mux (containerize) media.
+      function muxAudio(encodedChunk) { ... }
+      function muxVideo(encodedChunk) { ... }
+
+      // The app provides error handling (e.g. shutdown w/ UI message)
+      function onCodecError(error) { ... }
+
+      // Returns an object { audioEncoder, videoEncoder }.
+      // Encoded outputs sent immediately to app provided muxer.
+      async function buildAndConfigureEncoders() {
+        // Build encoders.
+        let audioEncoder = new AudioEncoder({ output: muxAudio, error: onCodecError });
+        let videoEncoder = new VideoEncoder({ output: muxVideo, error: onCodecError });
+
+        // Configure and reset if not supported. More sophisticated fallback recommended.
+        try {
+          await audioEncoder.configure({ codec: 'opus', ... });
+        } catch (error) {
+          audioEncoder = null;
+        }
+        try {
+          await videoEncoder.configure({ codec : 'vp8', ... });
+        } catch (error) {
+          videoEncoder = null;
+        }
+
+        return {audioEncoder, videoEncoder };
+      }
+
+      // Returns an object { audioDecoder, videoDecoder }.
+      // Decoded outputs sent immediately to the coresponding encoder for re-encoding.
+      async function buildAndConfigureDecoders(audioEncoder, videoEncoder) {
+        // Bind encode callbacks.
+        const reEncodeAudio = audioEncoder.encode.bind(audioEncoder);
+        const reEncodeVideo = videoEncode.encode.bind(videoEncoder);
+
+        // Build decoders.
+        const audioDecoder = new AudioDecoder({ output: reEncodeAudio, error: onCodecError });
+        const videoDecoder = new VideoDecoder({ output: reEncodeVideo, error: onCodecError });
+
+        // Configure and reset if not supported. More sophisticated fallback recommended.
+        try {
+          await audioDecoder.configure({ codec: 'aac', ... });
+        } catch (error) {
+          audioDecoder = null;
+        }
+        try {
+          await videoDecoder.configure({ codec : 'avc1.42001e', ... });
+        } catch (error) {
+          videoDecoder = null;
+        }
+
+        return { audioDecoder, videoDecoder};
+      }
+
+      // Setup encoders.
+      let { audioEncoder, videoEncoder } = await buildAndConfigureEncoders();
+
+      // App handles unsupported configuration.
+      if (audioEncoder == null || videoEncoder == null)
+        return;
+
+      // Setup decoders. Provide encoders to receive decoded output.
+      let { audioDecoder, videoDecoder } = await buildAndConfigureDecoders(audioEncoder, videoEncoder);
+
+      // App handles unsupported configuration.
+      if (audioDecoder == null || videoDecoder == null)
+        return;
+
+      // Start streaming encoded chunks to the decoders, repeatedly calling
+      // the provided callbacks for each chunk.
+      // Decoded output will be fed to encoders for re-encoding.
+      // Encoded output will be fed to muxer.
+      streamEncodedChunks(audioDecoder.decode.bind(audioDecoder),
+                videoDecoder.decode.bind(videoDecoder));
+    </pre>
+</div>
+
+<div class="example">
+    This code sample illustrates real-time communication using SVC.
+    <pre highlight="js">
+      videoEncoder.configure({
+      codec : 'vp9',
+      tuning: {
+        bitrate: 1_000_000,
+        framerate: 24,
+        width: 1024,
+        height: 768
+      }
+      // Two spatial layers with two temporal layers each
+      layers: [{
+          // Quarter size base layer
+          id: 'p0',
+          temporalSlots: [0],
+          scaleDownBy: 2,
+          dependsOn: ['p0'],
+        }, {
+          id: 'p1'
+          temporalSlots: [1],
+          scaleDownBy: 2,
+          dependsOn: ['p0'],
+        }, {
+          id: 's0',
+          temporalSlots: [0],
+          dependsOn: ['p0', 's0'],
+        }, {
+          id: 's1',
+          temporalSlots: [1],
+          dependsOn: ['p1', 's0', 's1'],
+        }],
+    });
+    </pre>
+</div>
+
+<h2 id="acknowledgements">Acknowledgements</h2>
+
+The following people have greatly contributed to this specification through
+extensive discussions on GitHub:
