@@ -1,0 +1,16 @@
+{
+    "src_file": "index.bs",
+    "type": "bikeshed",
+    "params": {
+        "md-status": "LS-COMMIT",
+        "md-warning": "Commit {{ sha }} {{ pull_request.head.repo.html_url }}/commit/{{ sha }} replaced by {{ config.ls_url }}",
+        "md-title": "{{ config.title }} (Pull Request Snapshot #{{ pull_request.number }})",
+        "md-Text-Macro": "SNAPSHOT-LINK {{ config.back_to_ls_link }}"
+    },
+    "post_processing": {
+        "name": "emu-algify",
+        "options": {
+            "throwingIndicators": true
+        }
+    }
+}
