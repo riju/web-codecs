@@ -141,7 +141,7 @@ pages and applications using {{WebCodecs}}. Some of them are
   Cloud gaming
   --------------------
   {{WebRTC}} and {{MSE}} are not great for cloud gaming. WebSocket is also not great for gaming.
-  {{WebRTC}} is hard to use in a server-client architecture and does not provide a lot of knobs to control buffering, decoding and rendering which are all controlled by browser. Cloud gaming need low latency provided by {{WebTransport}} and more web developer control provided by Web Codecs.
+  {{WebRTC}} is hard to use in a server-client architecture and does not provide a lot of knobs to control buffering, decoding and rendering which are all controlled by browser. Cloud gaming need low latency provided by {{WebTransport}} and more web developer control provided by WebCodecs.
   Details are described at [[CLOUD-GAMING-WEBCODECS]]
 
 
@@ -177,10 +177,11 @@ timestamp.
 <dfn>AudioPacket</dfn> contains decoded audio data. It will provide an
 {{AudioBuffer}} for rendering via {{AudioWorklet}}.
 
-A <dfn>VideoFrame</dfn> contains decoded video data. It will provide an
-{{ImageBitmap}} for rendering to {{Canvas}}. It should be possible to manipulate
-the {{ImageBitmap}} in {{WebGL}} and render the {{VideoFrame}} into a {{WebGL}}
-texture with texImage2D. It should also provide access to YUV data.
+A <dfn>VideoFrame</dfn> contains decoded video data. It can be drawn
+into {{Canvas}} with {{drawImage()}} or rendered into WebGL texture with
+{{texImage2D()}}.
+
+Issue: Support VideoFrame creation from yuv data? See <a href="https://github.com/WICG/web-codecs/issues/45">WICG#45</a>
 
 An <dfn>AudioEncoder</dfn> encodes <a>AudioPackets</a> to produce
 <a>EncodedAudioChunks</a>.
@@ -207,7 +208,7 @@ which the user agent interacts to encode a [=VideoFrame=]. The [=platform
 encoder=] can be defined by the underlying platform (e.g native media
 framework).
 
-# Web Codecs API # {#webcodecsapi}
+# WebCodecs API # {#webcodecsapi}
 
 VideoFrame interface {#video-frame-interface}
 --------------------
@@ -232,32 +233,43 @@ VideoFrame interface {#video-frame-interface}
     };
   </pre>
 
-The {{VideoFrame/timestamp!!attribute}} attribute in {{VideoFrame}} object that
+Instances of {{VideoFrame}} are created with the internal slots described
+in the following table:
+<table id="video-frame-slots" class="def">
+    <thead>
+        <tr><th>Internal Slot</th><th>Description (non-normative)</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><dfn attribute for=VideoFrame>\[[frame]]</dfn></td>
+            <td>Contains image data for the {{VideoFrame}}
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+The {{VideoFrame/timestamp!!attribute}} attribute in {{VideoFrame}} object
 represents the sampling instant of the first data of the {{VideoFrame}} in
-microseconds. Initial value should be specified by
+microseconds from a fixed origin. Initial value should be specified by
 {{VideoFrameInit/timestamp!!attribute}} during {{VideoFrame}} construction.
 
-The {{VideoFrame/duration!!attribute}} is an optional attribute in
+The {{VideoFrame/duration!!attribute}} is an attribute in
 {{VideoFrame}} object that represents the time interval for which the video
 composition should render the composed {{VideoFrame}} in microseconds.
 
-The {{VideoFrame/codedWidth!!attribute}} attribute in {{VideoFrame}} object that
-denotes the width of a {{VideoFrame}} immediately after a
-{{VideoDecoder/decode()}} operation.
+The {{VideoFrame/codedWidth!!attribute}} attribute in {{VideoFrame}} object
+denotes the number of pixel samples stored horizontally for each frame.
 
 The {{VideoFrame/codedHeight!!attribute}} attribute in {{VideoFrame}} object
-that denotes the height of a {{VideoFrame}} immediately after a
-{{VideoDecoder/decode()}} operation.
+denotes the number of pixel samples stored vertically for each frame.
 
 The {{VideoFrame/visibleWidth!!attribute}} attribute in {{VideoFrame}} object
-that denotes the portion of {{VideoFrame/codedWidth!!attribute}} which contains
-image data which should be visible to the user.
+denotes the number of pixel samples horizontally which should be visible to the user.
 
 The {{VideoFrame/visibleHeight!!attribute}} attribute in {{VideoFrame}} object
-that denotes the portion of {{VideoFrame/codedHeight!!attribute}} which contains
-image data. data which should be visible to the user.
+denotes the number of pixel samples vertically which should be visible to the user.
 
-Note: An image’s <strong>clean aperture</strong> is a region of video free from
+Note: An image's <strong>clean aperture</strong> is a region of video free from
 transition artifacts caused by the encoding of the signal. This is the region of
 video that should be displayed. {{VideoFrame/visibleWidth!!attribute}} and
 {{VideoFrame/visibleHeight!!attribute}} denote the frame's clean aperture
@@ -267,8 +279,7 @@ The {{VideoFrame/codedWidth!!attribute}} and
 {{VideoFrame/codedHeight!!attribute}} constitute the production aperture of the
 image.
 
-Instances of {{VideoFrame}} are created with an internal slot <dfn attribute
-for=VideoFrame>\[[frame]]</dfn>.
+Issue: How to express encoded size vs. visible size vs. natural size <a href="https://github.com/WICG/web-codecs/issues/26">WICG#26</a>
 
 ### Create a VideoFrame ### {#video-frame-constructor}
 <div algorithm="to create a video frame">
@@ -279,16 +290,22 @@ for=VideoFrame>\[[frame]]</dfn>.
     :: |frame_instance|, a {{VideoFrame}} object.
 
     1.  If |source| is null, [=Throw=] "{{NotFoundError!!exception}}" {{DOMException}} and return.
-    1.  Calculate the |coded size| from the |source|.
-    1.  Calculate |timestamp| from the input argument {{VideoFrameInit}} to create a {{VideoFrame}}.
-    1.  If |timestamp| is not null, set |frame_instance|.{{[[frame]]}} to |init|.{{timestamp!!dict-member}}.
-
+    1.  Set |coded size| from |source|.
+    1.  Set |visible size| from |source|.
+    1.  Set |timestamp| from the input argument |init|.
+    1.  Set |duration| from the input argument |init| if set.
+    1.  Set |frame_instance|.{{[[frame]]}} to contain the image data from |source|.
 
 ### VideoFrame.release() ### {#video-frame-release}
 <div algorithm="to release a video frame">
 The {{VideoFrame/release()}} method must run these steps:
 
-    1.  Reset the underlying |frame_instance|.{{[[frame]]}}.
+    1.  Release the memory allocated to |frame_instance|.{{[[frame]]}}
+    1. Set all attributes of |frame_instance| to zero.
+
+Issue: [ttoivone] From the Javascript perspective, {{VideoFrame/release()}} is not needed but it could just clear
+all references to |frame_instance| and let garbage collector to release the memory. Should guidelines
+be given here when the function needs to be called explicitly?
 
 
 EncodedVideoChunk interface {#encoded-video-interface}
@@ -329,6 +346,22 @@ in the following table:
     </tbody>
 </table>
 
+The {{EncodedVideoChunk/type!!attribute}} attribute in {{EncodedVideoChunk}} is set
+to <dfn for='EncodedVideoChunkType' enum-value>key</dfn> if the encoded video frame
+stored in the chunk is a key frame (ie. the frame can be decoded independently without referring
+to other frames) or otherwise it is set to <dfn for='EncodedVideoChunkType' enum-value>delta</dfn>.
+
+The {{EncodedVideoChunk/timestamp!!attribute}} attribute in {{EncodedVideoChunk}} object
+represents the sampling instant of the data in the {{EncodedVideoChunk}} in
+microseconds from a fixed origin.
+
+The {{EncodedVideoChunk/duration!!attribute}} is an attribute in
+{{EncodedVideoChunk}} object that represents the time duration for which the video
+composition should render the composed {{EncodedVideoChunk}} in microseconds.
+
+The {{EncodedVideoChunk/data!!attribute}} attribute in {{EncodedVideoChunk}} stores
+the video frame in encoded form.
+
 
 AudioPacket interface {#audio-packet-interface}
 --------------------
@@ -342,7 +375,7 @@ WebCodecs callbacks {#webcodecs-callbacks}
 --------------------
   <pre class='idl'>
     callback WebCodecsErrorCallback = void (DOMException error);
-    callback VideoDecoderOutputCallback = void (VideoFrame output);
+    callback VideoFrameOutputCallback = void (VideoFrame output);
     callback VideoEncoderOutputCallback = void (EncodedVideoChunk chunk);
   </pre>
 
@@ -364,18 +397,16 @@ VideoDecoder interface {#video-decoder-interface}
   </pre>
   <pre class='idl'>
     dictionary VideoDecoderInit {
-      VideoDecoderOutputCallback output;
+      VideoFrameOutputCallback output;
       WebCodecsErrorCallback error;
     };
   </pre>
+
   <pre class='idl'>
     dictionary EncodedVideoConfig {
       required DOMString codec;
-      required DOMString profile;
-
-      // These are the "coded size", not the "visible size"
-      required unsigned long width;
-      required unsigned long height;
+      BufferSource description;
+      double sampleAspect;
     };
   </pre>
 
@@ -383,14 +414,14 @@ A {{VideoDecoder}} object processes a queue of configure, decode, and flush
 requests. Requests are taken from the queue sequentially but may be processed
 concurrently. A {{VideoDecoder}} object has an associated [=platform decoder=].
 
-### VideoDecoder.decodeQueueSize() ### {#video-decoder-decodeQueueSize}
+### VideoDecoder.decodeQueueSize ### {#video-decoder-decodeQueueSize}
 
 The {{VideoDecoder/decodeQueueSize!!attribute}} attribute in {{VideoDecoder}}
-object denotes decode requests, excluding those that are already being
-processed. Applications can minimize underflow by enqueueing |decodeQueueSize|
-decode requests.
+object denotes the number of queued decode requests, excluding those that are already
+being processed or have finished processing. Applications can minimize underflow by
+enqueueing decoding requests until |decodeQueueSize| is sufficiently large.
 
-### VideoDecoder.decodeProcessingCount() ### {#video-decoder-decodeProcessingCount}
+### VideoDecoder.decodeProcessingCount ### {#video-decoder-decodeProcessingCount}
 
 The {{VideoDecoder/decodeProcessingCount!!attribute}} attribute in
 {{VideoDecoder}} object denotes the number of decode requests currently being
@@ -417,7 +448,7 @@ the following table:
     <tbody>
         <tr>
             <td><dfn attribute for=VideoDecoder>\[[request]]</dfn></td>
-            <td>A double-ended queue (FIFO) for storing the requests which can be one of the following type 
+            <td>First in first out list (FIFO) for storing the requests which can be one of the following type 
                 "configure",
                 "decode",
                 "flush", or
@@ -437,7 +468,7 @@ the following table:
         </tr>
         <tr>
             <td><dfn attribute for=VideoDecoder>\[[pending_encodes]]</dfn></td>
-            <td>A hashmap representing the number of pending decode requests currently being processed for the associated [=platform decoder=]. It is initially empty.
+            <td>A list representing the number of pending decode requests currently being processed for the associated [=platform decoder=]. It is initially empty.
             </td>
         </tr>
         <tr>
@@ -562,12 +593,6 @@ VideoEncoder interface {#video-encoder-interface}
 --------------------
 
   <pre class='idl'>
-    enum VideoEncoderHardwareMode {
-      "hardware",
-      "software"
-    };
-  </pre>
-  <pre class='idl'>
     dictionary VideoEncoderTuneOptions {
       unsigned long long bitrate;
       double framerate;
@@ -588,7 +613,7 @@ VideoEncoder interface {#video-encoder-interface}
   <pre class='idl'>
     [Exposed=(Window)]
     interface VideoEncoder {
-      constructor(VideoEncoderInit init);
+      constructor();
       Promise&lt;void&gt; configure(VideoEncoderInit init);
       Promise&lt;void&gt; encode(VideoFrame frame, optional VideoEncoderEncodeOptions options);
       Promise&lt;void&gt; tune(VideoEncoderTuneOptions options);
@@ -596,7 +621,6 @@ VideoEncoder interface {#video-encoder-interface}
       Promise&lt;void&gt; close();
     };
   </pre>
-
 
 A {{VideoEncoder}} object processes a queue of configure, encode, tuning to new
 parameters and flush requests. Requests are taken from the queue sequentially
