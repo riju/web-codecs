@@ -133,39 +133,25 @@ Image encoding is presently out of scope for this document.
 <em>This section is non-normative</em>.
 
 This section provides a collection of use cases and usage scenarions for web
-pages and applications using {{WebCodecs}}. Some of them are
-<strong>not</strong> supported in the current scope.
+pages and applications using {{WebCodecs}}. 
 
-  Extremely low latency live streaming (< 3s delay)
-  --------------------
-  Cloud gaming
-  --------------------
-  {{WebRTC}} and {{MSE}} are not great for cloud gaming. WebSocket is also not great for gaming.
-  {{WebRTC}} is hard to use in a server-client architecture and does not provide a lot of knobs to control buffering, decoding and rendering which are all controlled by browser. Cloud gaming need low latency provided by {{WebTransport}} and more web developer control provided by WebCodecs.
-  Details are described at [[CLOUD-GAMING-WEBCODECS]]
-
-
-  Live stream uploading
-  --------------------
-  Non-realtime encoding/decoding/transcoding, such as for local file editing
-  --------------------
-  Advanced Real-time Communications
-  --------------------
-  e2e encryption
-  --------------------
-  control over buffer behavior
-  --------------------
-  spatial and temporal scalability
-  --------------------
-  Decoded and encoding images
-  --------------------
-  Re-encoding multiple input media streams in order to merge many encoded media
-  streams into one encoded media stream.
-  --------------------
-
+  - Low latency live streaming (< 100 ms delay).
+  - Cloud gaming:
+    {{WebRTC}} and {{MSE}} are not great for cloud gaming. WebSocket is also not great for gaming.
+    {{WebRTC}} is hard to use in a server-client architecture and does not provide a lot of knobs to
+    control buffering, decoding and rendering which are all controlled by browser.
+    Cloud gaming need low latency provided by {{WebTransport}} and more web developer control provided by WebCodecs.
+    Details are described at [[CLOUD-GAMING-WEBCODECS]].
+  - Live stream uploading.
+  - Non-realtime encoding/decoding/transcoding, such as for local file editing.
+  - Advanced Real-time Communications.
+    - End-to-end encryption.
+    - Control over buffer behavior.
+    - Spatial and temporal scalability.
+  - Re-encoding multiple input media streams in order to merge many encoded media.
+    streams into one encoded media stream.
 
 # Security and Privacy Considerations # {#securityandprivacy}
-
 
 # Model # {#model}
 
@@ -178,8 +164,8 @@ timestamp.
 {{AudioBuffer}} for rendering via {{AudioWorklet}}.
 
 A <dfn>VideoFrame</dfn> contains decoded video data. It can be drawn
-into {{Canvas}} with {{drawImage()}} or rendered into WebGL texture with
-{{texImage2D()}}.
+into {{Canvas}} with {{drawImage}} or rendered into WebGL texture with
+{{texImage2D}}.
 
 Issue: Support VideoFrame creation from yuv data? See <a href="https://github.com/WICG/web-codecs/issues/45">WICG#45</a>
 
@@ -196,7 +182,7 @@ A <dfn>VideoDecoder</dfn> decodes <a>EncodedVideoChunks</a> to produce
 <a>VideoFrames</a>.
 
 WebCodecs API also has mechanisms to import content referenced through a valid
-{{MediaStreamTrack}}, for example from {{getUserMedia()}}.
+{{MediaStreamTrack}}, for example from {{getUserMedia}}.
 
 The term <dfn>platform decoder</dfn> refers to the platform interfaces with
 which the user agent interacts to obtain a decoded [=VideoFrame=]. The
@@ -223,6 +209,7 @@ VideoFrame interface {#video-frame-interface}
     interface VideoFrame {
         constructor(VideoFrameInit init, ImageBitmap source);
         void release();
+        [NewObject] Promise&lt;ImageBitmap&gt; createImageBitmap(optional ImageBitmapOptions options = {});
         readonly attribute unsigned long long timestamp;  // microseconds
         readonly attribute unsigned long long? duration;  // microseconds
         readonly attribute unsigned long codedWidth;
@@ -281,7 +268,7 @@ image.
 
 Issue: How to express encoded size vs. visible size vs. natural size <a href="https://github.com/WICG/web-codecs/issues/26">WICG#26</a>
 
-### Create a VideoFrame ### {#video-frame-constructor}
+### Create VideoFrame ### {#video-frame-constructor}
 <div algorithm="to create a video frame">
     : input
     :: |init|, a [=dictionary=] object of type {{VideoFrameInit}}
@@ -289,22 +276,44 @@ Issue: How to express encoded size vs. visible size vs. natural size <a href="ht
     : output
     :: |frame_instance|, a {{VideoFrame}} object.
 
-    1.  If |source| is null, [=Throw=] "{{NotFoundError!!exception}}" {{DOMException}} and return.
-    1.  Set |coded size| from |source|.
-    1.  Set |visible size| from |source|.
-    1.  Set |timestamp| from the input argument |init|.
-    1.  Set |duration| from the input argument |init| if set.
-    1.  Set |frame_instance|.{{[[frame]]}} to contain the image data from |source|.
+These steps are run in the constructor of a new {{VideoFrame}} object:
 
-### VideoFrame.release() ### {#video-frame-release}
+    1.  If |source| is <code>null</code>:
+        1. [=Throw=] "{{NotFoundError!!exception}}" {{DOMException}} and abort these steps.
+    1.  Set |codedWidth| equal to |source|.{{width}}.
+    1.  Set |codedheight| equal to |source|.{{height}}.
+    1.  Set |visibleWidth| equal to |source|.{{width}}.
+    1.  Set |visibleHeight| equal to |source|.{{height}}.
+    1.  Set |timestamp| equal to |init|.|timestamp|.
+    1.  If |init|.|duration| is set, set |duration| equal to |init|.|duration|.
+    1.  Allocate sufficiently memory for {{[[frame]]}} and copy the image data from |source| into it.
+</div>
+
+### VideoFrame.createImageBitmap() method ### {#video-frame-createImageBitmap}
+<div algorithm="to create ImageBitmap">
+    : output
+    :: |p|, a {{Promise}} object.
+The {{VideoFrame/createImageBitmap}} method must run these steps:
+    1.  Let |p| be a new {{Promise}} object.
+    1.  If |videoframe| does not contain a valid frame:
+        1.  Reject |p| with an "{{InvalidAccessError!!exception}}" {{DOMException}}.
+        1.  Return |p| and abort these steps.
+    1.  Let |imageBitmap| be a new {{ImageBitmap}} object.
+    1.  Set |imageBitmap|'s <a>bitmap data</a> from {{[[frame]]}}.
+    1.  Run this step <a>in parallel</a>:
+        1. Resolve |p| with |imageBitmap|.
+    1.  Return |p|.
+</div>
+
+### VideoFrame.release() method ### {#video-frame-release}
 <div algorithm="to release a video frame">
 The {{VideoFrame/release()}} method must run these steps:
+    1. Release all resources allocated to {{[[frame]]}}.
+    1. Set all attributes equal to zero.
+</div>
 
-    1.  Release the memory allocated to |frame_instance|.{{[[frame]]}}
-    1. Set all attributes of |frame_instance| to zero.
-
-Issue: [ttoivone] From the Javascript perspective, {{VideoFrame/release()}} is not needed but it could just clear
-all references to |frame_instance| and let garbage collector to release the memory. Should guidelines
+Issue: [ttoivone] From the Javascript perspective, {{VideoFrame/release}} is not needed but it could just clear
+all references to a {{VideoFrame}} object and let garbage collector to release the memory. Should guidelines
 be given here when the function needs to be called explicitly?
 
 
@@ -316,35 +325,14 @@ EncodedVideoChunk interface {#encoded-video-interface}
       "delta",
     };
     interface EncodedVideoChunk {
-      constructor(EncodedVideoChunkType type, unsigned long long timestamp, BufferSource data);
-      constructor(EncodedVideoChunkType type, unsigned long long timestamp, unsigned long long duration, BufferSource data);
+      constructor(EncodedVideoChunkType chunk_type, unsigned long long chunk_timestamp, BufferSource chunk_data);
+      constructor(EncodedVideoChunkType chunk_type, unsigned long long chunk_timestamp, unsigned long long chunk_duration, BufferSource chunk_data);
       readonly attribute EncodedVideoChunkType type;
-      // TODO: Add frame dependency information
       readonly attribute unsigned long long timestamp;  // microseconds
       readonly attribute unsigned long long? duration;  // microseconds
       readonly attribute ArrayBuffer data;
     };
   </pre>
-
-Instances of {{EncodedVideoChunk}} are created with the internal slots described
-in the following table:
-<table id="video-decoder-slots" class="def">
-    <thead>
-        <tr><th>Internal Slot</th><th>Description (non-normative)</th></tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td><dfn attribute for=EncodedVideoChunk>\[[metadata]]</dfn></td>
-            <td>A struct which should contain information like if the frame is a key_frame, the timestamp and duration for which the frame should be rendered.
-            </td>
-        </tr>
-        <tr>
-            <td><dfn attribute for=EncodedVideoChunk>\[[buffer]]</dfn></td>
-            <td>An ArrayBuffer to hold the {{VideoFrame}} data.
-            </td>
-        </tr>
-    </tbody>
-</table>
 
 The {{EncodedVideoChunk/type!!attribute}} attribute in {{EncodedVideoChunk}} is set
 to <dfn for='EncodedVideoChunkType' enum-value>key</dfn> if the encoded video frame
@@ -361,6 +349,26 @@ composition should render the composed {{EncodedVideoChunk}} in microseconds.
 
 The {{EncodedVideoChunk/data!!attribute}} attribute in {{EncodedVideoChunk}} stores
 the video frame in encoded form.
+
+### Create EncodedVideoChunk ### {#video-frame-constructor}
+
+<div algorithm="to create a encoded video chunk">
+    : input
+    :: |chunk_type|, a {{EncodedVideoChunkType}} object.
+    :: |chunk_timestamp|, a <code>unsigned long long</code> value.
+    :: |chunk_duration|, a <code>unsigned long long</code> value (optional).
+    :: |chunk_data|, a {{BufferSource}} object.
+    : output
+    :: |decoder_instance|, a {{VideoDecoder}} object.
+These steps are run in the constructor of a new {{VideoFrame}} object:
+
+    1.  If |chunk_data| is not a valid {{BufferSource}}:
+        1. [=Throw=] "{{NotFoundError!!exception}}" {{DOMException}} and abort these steps.
+    1.  Set {{EncodedVideoChunk/type!!attribute}} equal to |chunk_type|.
+    1.  Set {{EncodedVideoChunk/timestamp!!attribute}} equal to |chunk_timestamp|.
+    1.  Set {{EncodedVideoChunk/duration!!attribute}} equal to |chunk_duration| if |chunk_duration| argument is given to the constructor.
+    1.  Create a new {{ArrayBuffer}} {{EncodedVideoChunk/data!!attribute}} and copy bytes from |chunk_data| into it.
+</div>
 
 
 AudioPacket interface {#audio-packet-interface}
@@ -432,8 +440,8 @@ enqueueing decode requests only when |decodeQueueSize| and
 
 ### VideoDecoder Callbacks ### {#video-decoder-callbacks}
 
-The {{VideoDecoderOutputCallback}} denoted by |output|, is for emitting
-{{VideoFrames}}. The {{WebCodecsErrorCallback}} denoted by |error|, is for
+The {{VideoDecoderOutputCallback}}, denoted by |output|, is for emitting
+{{VideoFrame}}s. The {{WebCodecsErrorCallback}}, denoted by |error|, is for
 emitting decode errors.
 
 ### VideoDecoder internal slots ### {#video-decoder-internal-slots}
@@ -486,103 +494,138 @@ the following table:
             <td>A callback which is called when {{VideoDecoder}} encounters an error while decoding.
             </td>
         </tr>
+         <tr>
+            <td><dfn attribute for=VideoDecoder>\[[configured]]</dfn></td>
+            <td>Boolean flag whether the {{VideoDecoder}} has been configured.
+            </td>
+        </tr>
     </tbody>
 </table>
 
-### Create a VideoDecoder() ### {#video-decoder-constructor}
+### Create VideoDecoder ### {#video-decoder-constructor}
 <div algorithm="to create a decoder">
 
     : input
     :: |init|, a {{VideoDecoderInit}} object.
     : output
-    :: |decoder|, a {{VideoDecoder}} object.
+    :: |decoder_instance|, a {{VideoDecoder}} object.
 
-    1.  Let |video_decoder_init| be the first argument to constructor.
-    1.  Set |decoder|.{{[[requested_decodes]]}} to 0.
-    1.  Set |decoder|.{{[[requested_resets]]}} to 0.
-    1.  Set |decoder|.{{[[pending_encodes]]}} to empty.
-    1.  Set |decoder|.{{[[request]]}} to empty.
-    1.  Set |decoder|.{{[[platform_decoder]]}} to null.
-    1.  Set |decoder|.{{[[output_callback]]}} to |init|.{{VideoDecoderInit/output}}.
-    1.  Set |decoder|.{{[[error_callback]]}} to |init|.{{VideoDecoderInit/error}}.
+These steps are run in the constructor of a new {{VideoDecoder}} object:
 
-
+    1.  Set {{[[requested_decodes]]}} to 0.
+    1.  Set {{[[requested_resets]]}} to 0.
+    1.  Set {{[[pending_encodes]]}} to empty list.
+    1.  Set {{[[request]]}} to empty list.
+    1.  Set {{[[platform_decoder]]}} to <code>null</code>.
+    1.  Set {{[[output_callback]]}} to |init|.{{VideoDecoderInit/output}}.
+    1.  Set {{[[error_callback]]}} to |init|.{{VideoDecoderInit/error}}.
+    1.  Set {{[[configured]]}} to <code>false</code>.
 </div>
 
-### VideoDecoder.configure() ### {#video-decoder-configure}
+### VideoDecoder.configure() method ### {#video-decoder-configure}
 <div algorithm="to configure a decoder">
+
+    : input
+    :: |config|, a {{EncodedVideoConfig}} object.
+    : output
+    :: |p|, a {{Promise}} object.
 
   The {{VideoDecoder/configure()}} method must run these steps:
 
     1.  Let |p| be a new {{Promise}} object.
-    1.  Let |config|, an instance of {{EncodedVideoConfig}} be the first argument.
-    1.  Let |codec| be the |config|'s dictionary member of the same name.
-    1.  Perform |codec| validation:
-        1.  If |codec| is null, then reject |p| with an "{{NotAllowedError!!exception}}" {{DOMException}}. and return |p|.
-        1.  If |codec| is not among the set of allowed codecs, then reject |p| with an "{{NotSupportedError!!exception}}" {{DOMException}} and return |p|.
-    1.  If there doesn't exists a [=platform decoder=] which can fullfill the requirements set in |config|, then reject |p| with an "{{NotSupportedError}}" {{DOMException}} and return |p|.
-    1.  Let |chunks| be the union of the sets of items in |decoder|.{{[[pending_encodes]]}} and |decoder|.{{[[request]]}}.
-    1.  Wait until any of the items in |chunks| is not in |decoder|.{{[[pending_encodes]]}} or |decoder|.{{[[request]]}}.
-    1.  Set |decoder|.{{[[platform_decoder]]}} to point to the matching [=platform decoder=].
-    1.  Set |decoder|.{{[[platform_decoder]]}} to newly initialized state.
-    1.  Resolve and return |p|.
+    1.  Perform codec validation:
+        1.  If |config|.|codec| is <code>null</code>:
+            1. Reject |p| with an "{{NotAllowedError!!exception}}" {{DOMException}}.
+            1. Return |p| and abort these steps.
+        1.  If |config|.|codec| is not among the set of allowed codecs:
+            1. Reject |p| with an "{{NotSupportedError!!exception}}" {{DOMException}}.
+            1. Return |p| and abort these steps.
+    1.  If there doesn't exist a [=platform decoder=] which can fullfill the requirements set in |config|:
+        1. Reject |p| with an "{{NotSupportedError}}" {{DOMException}}.
+        1. Return |p| and abort these steps.
+    1.  Run these steps <a>in parallel</a>:
+        1.  Flush decode requests:
+            1. Let |pending| be the union of the sets of items in {{[[pending_encodes]]}} and {{[[request]]}}.
+            1. Wait until any of the items in |pending| is not in {{[[pending_encodes]]}} or {{[[request]]}}.
+        1.  Set {{[[platform_decoder]]}} to point to the matching [=platform decoder=].
+        1.  Set {{[[configured]]}} to <code>true</code>.
+        1. Resolve |p|.
+    1.  Return |p|.
 </div>
 
 Note: After the {{VideoDecoder/configure()}} call, the decoder is in the newly
 initialized state so the next chunk to be decoded must be a keyframe.
 
-### VideoDecoder.decode() ### {#video-decoder-decode}
+### VideoDecoder.decode() method ### {#video-decoder-decode}
 <div algorithm="to start decoding">
 
+    : input
+    :: |chunk|, a {{EncodedVideoChunk}} object.
+    : output
+    :: |p|, a {{Promise}} object.
 
   The {{VideoDecoder/decode()}} method must run these steps:
 
     1.  Let |p| be a new {{Promise}} object.
-    1.  Let |chunk|, an instance of {{EncodedVideoChunk}} be the first argument.
-    1.  If |decoder|.{{[[platform_decoder]]}} is null, then reject |p| with an "{{InvalidStateError!!exception}}" {{DOMException}} and return |p|.
-    1.  If |chunk|.{{type}} is not {{EncodedVideoChunkType/key}} and |decoder|.{{[[platform_decoder]]}} is newly initialized, then reject p with an "{{InvalidStateError!!exception}}" {{DOMException}} and return |p|.
-    1.  If |decoder|.{{[[platform_decoder]]}} can accept more work:
-        1.  Add |chunk| into |decoder|.{{[[pending_encodes]]}}.
+    1.  If {{[[platform_decoder]]}} is <code>null</code>:
+        1. Reject |p| with an "{{InvalidStateError!!exception}}" {{DOMException}}.
+        1. Return |p| and abort these steps.
+    1.  If |chunk|.{{type}} is not {{EncodedVideoChunkType/key}} and {{[[platform_decoder]]}} is newly initialized:
+        1. Reject |p| with an "{{InvalidStateError!!exception}}" {{DOMException}}.
+        1. Return |p| and abort these steps.
+    1.  If {{[[platform_decoder]]}} can accept more work:
+        1.  Add |chunk| into {{[[pending_encodes]]}}.
         1.  Let |video_frame| be a new instance of {{VideoFrame}} and associate it with |chunk|.
-        1.  |decoder|.{{[[platform_decoder]]}} should start decoding chunk into |video_frame|.
-        1.  Increment |decoder|.{{decodeProcessingCount!!attribute}} by 1.
-    1.  else:
-        1.  Add chunk at the end of |decoder|.{{[[request]]}} queue.
-        1.  Increment |decoder|.{{decodeQueueSize!!attribute}} by 1.
-    1.  Resolve and return |p|.
+        1.  {{[[platform_decoder]]}} should start decoding chunk into |video_frame|.
+        1.  Increment {{decodeProcessingCount!!attribute}} by 1.
+    1.  Otherwise:
+        1.  Add chunk at the end of {{[[request]]}} queue.
+        1.  Increment {{decodeQueueSize!!attribute}} by 1.
+    1.  Run this step <a>in parallel</a>:
+        1. Resolve |p|.
+    1.  Return |p|.
 </div>
 
 Note: get backpressure idea from
-|decoder|.{{decodeQueueSize!!attribute}}) to know if
-|decoder|.{{[[platform_decoder]]}} can accept new work right away
-with |decoder|.{{decodeProcessingCount!!attribute}}.
+{{decodeQueueSize!!attribute}}) to know if
+{{[[platform_decoder]]}} can accept new work right away
+with {{decodeProcessingCount!!attribute}}.
 
 
-### VideoDecoder.flush() ### {#video-decoder-flush}
+### VideoDecoder.flush() method ### {#video-decoder-flush}
+    : output
+    :: |p|, a {{Promise}} object.
 <div algorithm="to flush a decoder">
 
   The {{VideoDecoder/flush()}} method must run these steps:
 
     1.  Let |p| be a new {{Promise}} object.
-    1.  Let |chunks| be the union of the sets of items in |decoder|.{{[[pending_encodes]]}} and |decoder|.{{[[request]]}}.
-    1.  Wait until any of the items in |chunks| is not in |decoder|.{{[[pending_encodes]]}} or |decoder|.{{[[request]]}}.
-    1.  Resolve and return |p|.
+    1.  Flush decode requests:
+        1.  Let |pending| be the union of the sets of items in {{[[pending_encodes]]}} and {{[[request]]}}.
+        1.  Wait until any of the items in |pending| is not in {{[[pending_encodes]]}} or {{[[request]]}}.
+    1.  Run this step <a>in parallel</a>:
+        1. Resolve |p|.
+    1.  Return |p|.
 </div>
 
-### VideoDecoder.reset() ### {#video-decoder-reset}
+### VideoDecoder.reset() method ### {#video-decoder-reset}
+    : output
+    :: |p|, a {{Promise}} object.
 <div algorithm="to reset a decoder">
 
   The {{VideoDecoder/reset()}} method must run these steps:
 
     1.  Let |p| be a new {{Promise}} object.
-    1.  Abort all work performed by |decoder|.{{[[platform_decoder]]}}. {{VideoDecoderOutputCallback}} will not be called for them.
-    1.  Remove all items from |decoder|.{{[[pending_encodes]]}}.
-    1.  Remove all items from |decoder|.{{[[request]]}}  
-    1.  Set |decoder|.{{[[requested_decodes]]}} to 0 and |decoder|.{{[[pending_encodes]]}} to empty.
-    1.  Set |decoder|.{{decodeProcessingCount!!attribute}} to 0.
-    1.  Set |decoder|.{{decodeQueueSize!!attribute}} to 0.
-    1.  Set the |decoder| in to newly initialized state.
-    1.  Resolve and return |p|.
+    1.  Abort all work performed by {{[[platform_decoder]]}}. {{VideoDecoderOutputCallback}} will not be called for them.
+    1.  Remove all items from {{[[pending_encodes]]}}.
+    1.  Remove all items from {{[[request]]}}  
+    1.  Set {{[[requested_decodes]]}} to 0 and {{[[pending_encodes]]}} to empty.
+    1.  Set {{decodeProcessingCount!!attribute}} to 0.
+    1.  Set {{decodeQueueSize!!attribute}} to 0.
+    1.  Set {{[[configured]]}} to <code>false</code>.
+    1.  Run this step <a>in parallel</a>:
+        1. Resolve |p|.
+    1.  Return |p|.
 </div>
 
 Note: After the {{VideoDecoder/reset()}} call, the decoder is in the newly
@@ -600,6 +643,7 @@ VideoEncoder interface {#video-encoder-interface}
       required unsigned long height;
     };
   </pre>
+
   <pre class='idl'>
     dictionary VideoEncoderInit {
       required DOMString codec;
@@ -607,6 +651,12 @@ VideoEncoder interface {#video-encoder-interface}
       required VideoEncoderTuneOptions tuneOptions;
       required VideoEncoderOutputCallback output;
       WebCodecsErrorCallback error;
+    };
+  </pre>
+
+  <pre class='idl'>
+    dictionary VideoEncoderEncodeOptions {
+      boolean? keyFrame;
     };
   </pre>
 
@@ -627,7 +677,7 @@ parameters and flush requests. Requests are taken from the queue sequentially
 but may be processed concurrently. A {{VideoEncoder}} object has an associated
 [=platform video encoder=].
 
-### VideoEncoder internal slots ### {#video-encoder-internal-slots}
+### {{VideoEncoder}} internal slots ### {#video-encoder-internal-slots}
 
 Instances of {{VideoEncoder}} are created with the internal slots described in
 the following table:
@@ -660,7 +710,7 @@ the following table:
         </tr>
         <tr>
             <td><dfn attribute for=VideoEncoder>\[[pending_encodes]]</dfn></td>
-            <td>A hashmap representing the number of pending encode requests currently being processed for the associated [=platform encoder=]. It is initially unset.
+            <td>A set representing the number of pending encode requests currently being processed for the associated [=platform encoder=]. It is initially unset.
             </td>
         </tr>
         <tr>
@@ -677,90 +727,115 @@ the following table:
 </table>
 
 
-### Create a VideoEncoder() ### {#video-encoder-constructor}
+### Create a {{VideoEncoder}} ### {#video-encoder-constructor}
 <div algorithm="to create a encoder">
+    : output
+    :: |encoder_instance|, a {{VideoEncoder}} object.
+These steps are run in the constructor of a new {{VideoEncoder}} object:
+    1.  Set {{[[requested_encodes]]}} to 0.
+    1.  Set {{[[requested_resets]]}} to 0.
+    1.  Set {{[[pending_encodes]]}} to empty set.
+    1.  Set {{[[request]]}} to empty set.
+    1.  Set {{[[platform_encoder]]}} to <code>null</code>.
+    1.  Set {{[[output_callback]]}} to <code>null</code>.
+    1.  Set {{[[error_callback]]}} to <code>null</code>.
+</div>
 
+### VideoEncoder.configure() method ### {#video-encoder-configure}
+<div algorithm="to configure an encoder">
     : input
     :: |init|, a {{VideoEncoderInit}} object.
     : output
-    :: |encoder|, a {{VideoEncoder}} object.
-
-    1.  Let |init| be the first argument to constructor.
-    1.  Set |encoder|.{{[[requested_encodes]]}} to 0.
-    1.  Set |encoder|.{{[[requested_resets]]}} to 0.
-    1.  Set |encoder|.{{[[pending_encodes]]}} to empty.
-    1.  Set |encoder|.{{[[request]]}} to empty.
-    1.  Set |encoder|.{{[[platform_encoder]]}} to null.
-    1.  Set |encoder|.{{[[output_callback]]}} to |init|.{{VideoEncoderInit/output}}.
-    1.  Set |encoder|.{{[[error_callback]]}} to |init|.{{VideoEncoderInit/error}}.
-
-
-</div>
-
-### VideoEncoder.configure() ### {#video-encoder-configure}
-<div algorithm="to configure an encoder">
+    :: |p|, a {{Promise}} object.
   The {{VideoEncoder/configure()}} method must run these steps:
 
     1.  Let |p| be a new {{Promise}} object.
-    1.  Set |encoder|.{{[[tune_options]]}} to |init|.{{VideoEncoderInit/tune_options}}.
-
+    1.  If |init| is not a valid {{VideoEncoderInit}}:
+        1. Reject |p| with newly created {{TypeError}}.
+        1. Return |p| and abort these steps.
+    1.  Set {{[[tune_options]]}} to |init|.{{VideoEncoderInit/tuneOptions}}.
+    1.  Set {{[[output_callback]]}} to |init|.{{VideoEncoderInit/output}}.
+    1.  Set {{[[error_callback]]}} to |init|.{{VideoEncoderInit/error}}.
+    1.  Run this step <a>in parallel</a>:
+        1. Resolve |p|.
+    1.  Return |p|.
 </div>
 
-### VideoEncoder.encode() ### {#video-encoder-encode}
+### VideoEncoder.encode() method ### {#video-encoder-encode}
 <div algorithm="to start encoding">
+    : input
+    :: |frame|, a {{VideoFrame}} object.
+    :: |options|, a {{VideoEncoderEncodeOptions}} object (optional).
+    : output
+    :: |p|, a {{Promise}} object.
   The {{VideoEncoder/encode()}} method must run these steps:
-
     1.  Let |p| be a new {{Promise}} object.
-    1.  Let |frame| an instance of {{VideoFrame}} be the first argument.
-    1.  Let |options| an instance of {{VideoEncoderEncodeOptions}} be the second argument.
-    1.  If |options| is null, set options to {}.
-    1.  Let |request| be a triplet {|frame|, |options|, |encoder|.{{[[tune_options]]}}}.
-    1.  If |encoder|.{{[[platform_encoder]]}} is null, then reject |p| with an "{{InvalidStateError!!exception}}" {{DOMException}} and return |p|.
-    1.  If |encoder|.{{[[platform_encoder]]}} can accept more work:
-        1.  Add |request| into |encoder|.{{[[pending_encodes]]}}.
-        1.  Increment |encoder|.{{encodeProcessingCount!!attribute}} by 1.
-        1.  |encoder|.{{[[platform_encoder]]}} should start encoding |request|.|frame| using |request|.|encoder|.{{[[tune_options]]}}} and |request|.|options|.
-    1.  else:
-        1.  Add |request| at the back of |encoder|.{{[[request]]}} queue.
-        1.  Increment |encoder|.{{encodeQueueSize!!attribute}} by 1.
-    1.  Resolve and return |p|.
-
+    1.  If |options| is <code>null</code>, set |options| to {}.
+    1.  Let |request| to be a triplet {|frame|, |options|, {{[[tune_options]]}}}.
+    1.  If {{[[platform_encoder]]}} is <code>null</code>:
+        1. Reject |p| with an "{{InvalidStateError!!exception}}" {{DOMException}}.
+        1. Abort these steps and return |p|.
+    1.  If {{[[platform_encoder]]}} can accept more work:
+        1.  Add |request| into {{[[pending_encodes]]}}.
+        1.  Increment {{[[requested_encodes]]}} by 1.
+        1.  Start encoding |request|.|frame| with {{[[platform_encoder]]}} using |request|.{{[[tune_options]]}}} and |request|.|options|.
+    1.  Otherwise:
+        1.  Add |request| at the back of {{[[request]]}} queue.
+        1.  Increment {{[[pending_encodes]]}} by 1.
+    1.  Run this step <a>in parallel</a>:
+        1. Resolve |p|.
+    1.  Return |p|.
 </div>
 
-### VideoEncoder.tune() ### {#video-encoder-tune}
+### VideoEncoder.tune() method ### {#video-encoder-tune}
 <div algorithm="to tune encoding parameters">
+    : input
+    :: |options|, a {{VideoEncoderTuneOptions}} object.
+    : output
+    :: |p|, a {{Promise}} object.
   The {{VideoEncoder/tune()}} method must run these steps:
 
     1.  Let |p| be a new {{Promise}} object.
     1.  Let |tune_options| an instance of {{VideoEncoderTuneOptions}} be the first argument.
-    1.  If the parameters in |tune_options| are not valid, then reject p with an "{{NotSupportedError!!exception}}" {{DOMException}} and return |p|.
-    1.  Set |encoder|.{{[[tune_options]]}} to |tune_options|.
-    1.  Resolve and return |p|.
+    1.  If the parameters in |tune_options| are not valid:
+        1. Reject p with an "{{NotSupportedError!!exception}}" {{DOMException}}.
+	1. Return |p| and abort these steps.
+    1.  Set {{[[tune_options]]}} to |tune_options|.
+    1.  Run this step <a>in parallel</a>:
+        1. Resolve |p|.
+    1.  Return |p|.
 </div>
 
-### VideoEncoder.flush() ### {#video-encoder-flush}
+### VideoEncoder.flush() method ### {#video-encoder-flush}
 <div algorithm="to flush an encoder">
+    : output
+    :: |p|, a {{Promise}} object.
   The {{VideoEncoder/flush()}} method must run these steps:
 
     1.  Let |p| be a new {{Promise}} object.
-    1.  Let |chunks| be the union of the sets of items in |encoder|.{{[[pending_encodes]]}} and |encoder|.{{[[request]]}}.
-    1.  Wait until any of the items in |chunks| is not in |encoder|.{{[[pending_encodes]]}} or |encoder|.{{[[request]]}}.
-    1.  Resolve and return |p|.
+    1.  Flush encode requests:
+        1.  Let |pending| be the union of the sets of items in {{[[pending_encodes]]}} and {{[[request]]}}.
+        1.  Wait until any of the items in |pending| is not in {{[[pending_encodes]]}} or {{[[request]]}}.
+    1.  Run this step <a>in parallel</a>:
+        1. Resolve |p|.
+    1.  Return |p|.
 </div>
 
-### VideoEncoder.close() ### {#video-encoder-close}
+### VideoEncoder.close() method ### {#video-encoder-close}
 <div algorithm="to close an encoder">
+    : output
+    :: |p|, a {{Promise}} object.
   The {{VideoEncoder/close()}} method must run these steps:
 
     1.  Let |p| be a new {{Promise}} object.
-    1.  Let |chunks| be the union of the sets of items in |encoder|.{{[[pending_encodes]]}} and |encoder|.{{[[request]]}}.
-    1.  Wait until any of the items in |chunks| is not in |encoder|.{{[[pending_encodes]]}} or |encoder|.{{[[request]]}}.
-    1.  Set the |encoder| to null.
-    1.  Resolve and return |p|.
+    1.  Flush encode requests:
+        1.  Let |pending| be the union of the sets of items in {{[[pending_encodes]]}} and {{[[request]]}}.
+        1.  Wait until any of the items in |pending| is not in {{[[pending_encodes]]}} or {{[[request]]}}.
+    1.  Set the {{[[platform_encoder]]}} to <code>null</code>.
+    1.  Run this step <a>in parallel</a>:
+        1. Resolve |p|.
+    1.  Return |p|.
 </div>
-
-
-
 
 AudioDecoder  interface {#audio-decoder-interface}
 --------------------
@@ -802,8 +877,6 @@ AudioEncoder interface {#audio-decoder-interface}
       });
     </pre>
 </div>
-
-
 
 <div class="example">
     This code sample illustrates transcoding or offline encode/decode.
